@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a202c;
+            color: #f7fafc;
+            font-family: 'Arial', sans-serif;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="max-w-lg w-full bg-gray-800 rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold text-blue-400 text-center mb-4">YouTube Video Downloader</h1>
+        <p class="text-gray-300 text-center mb-6">Paste a YouTube video link below to download it.</p>
+        
+        <div>
+            <input
+                type="url"
+                id="youtubeUrl"
+                placeholder="Enter YouTube video link"
+                class="w-full p-3 mb-4 border-2 border-gray-600 rounded-lg bg-gray-700 text-gray-200 focus:outline-none focus:ring focus:ring-blue-400"
+            />
+            <button
+                id="downloadBtn"
+                class="w-full py-2 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-500 transition"
+            >
+                Download Video
+            </button>
+            <p id="statusMessage" class="text-center mt-4 text-sm"></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("downloadBtn").addEventListener("click", async () => {
+            const youtubeUrl = document.getElementById("youtubeUrl").value.trim();
+            const statusMessage = document.getElementById("statusMessage");
+
+            // Clear previous status message
+            statusMessage.textContent = "";
+            statusMessage.classList.remove("error");
+
+            if (!youtubeUrl) {
+                statusMessage.textContent = "Please enter a valid YouTube URL.";
+                statusMessage.classList.add("error");
+                return;
+            }
+
+            try {
+                statusMessage.textContent = "Processing your request... Please wait.";
+
+                // Make a request to the backend
+                const response = await fetch(`http://127.0.0.1:5000/download?url=${encodeURIComponent(youtubeUrl)}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || "An unknown error occurred");
+                }
+
+                // Create a blob URL for the video file
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+
+                // Extract filename from headers or set a default name
+                const contentDisposition = response.headers.get("Content-Disposition");
+                const filename = contentDisposition
+                    ? contentDisposition.split("filename=")[1].replace(/"/g, "")
+                    : "video.mp4";
+
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+
+                // Remove the link from the DOM
+                link.remove();
+
+                statusMessage.textContent = "Download complete! Enjoy your video.";
+                statusMessage.classList.remove("error");
+            } catch (error) {
+                console.error("Download failed:", error);
+                statusMessage.textContent = error.message || "Failed to download the video. Please try again.";
+                statusMessage.classList.add("error");
+            }
+        });
+    </script>
+</body>
+</html>
